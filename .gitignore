@@ -1,0 +1,18 @@
+# 环境变量与本地缓存（勿提交密钥）
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+
+# 系统与 IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# 上传/临时文件
+uploads/
+*.pdf
+!test_report.pdf
