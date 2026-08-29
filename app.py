@@ -148,6 +148,7 @@ def _configure_api_key() -> None:
     st.sidebar.caption("⚠️ 您必须输入自己的 API Key 才能使用 AI 分析功能")
     st.sidebar.divider()
     st.sidebar.markdown("**报告信息**（用于 AI 分析，可修改）")
+    st.sidebar.caption("🔒 您的 Key 仅用于本次请求，不会存储或上传")
 
 
 def _guess_metadata(filename: str) -> Tuple[str, str]:
