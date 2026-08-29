@@ -132,26 +132,20 @@ def _close_section() -> None:
 # API Key 与元数据
 # ---------------------------------------------------------------------------
 def _configure_api_key() -> None:
-    """侧边栏：可选 API Key，统一写入 DEEPSEEK_API_KEY 环境变量。"""
-    load_dotenv()
+    """侧边栏：强制用户输入自己的 DeepSeek API Key。"""
+    st.sidebar.header("🔑 API 配置")
 
-    st.sidebar.header("系统配置")
-
-    env_key = os.getenv("DEEPSEEK_API_KEY", "") or ""
-    masked = f"{env_key[:6]}…{env_key[-4:]}" if len(env_key) > 12 else ("已配置" if env_key else "未配置")
-
-    st.sidebar.caption(f"当前环境变量：{masked}")
-
-    sidebar_key = st.sidebar.text_input(
-        "DeepSeek API Key（可选）",
+    # 关键改动：把 Key 存入 session_state，而不是直接覆盖环境变量
+    user_key = st.sidebar.text_input(
+        "DeepSeek API Key",
         type="password",
-        placeholder="sk-…",
-        help="留空则使用 .env 或系统环境变量中的 DEEPSEEK_API_KEY",
+        placeholder="请输入您的 DeepSeek API Key（必填）",
+        help="在 platform.deepseek.com 注册并获取 API Key。不会保存在任何地方。",
+        key="api_key_input",
     )
+    st.session_state.user_api_key = user_key.strip() if user_key else ""
 
-    if sidebar_key and sidebar_key.strip():
-        os.environ["DEEPSEEK_API_KEY"] = sidebar_key.strip()
-
+    st.sidebar.caption("⚠️ 您必须输入自己的 API Key 才能使用 AI 分析功能")
     st.sidebar.divider()
     st.sidebar.markdown("**报告信息**（用于 AI 分析，可修改）")
 
@@ -278,13 +272,21 @@ def _render_ai_section(metrics: Dict[str, Any]) -> None:
     st.caption(f"分析对象：{company} · {period}")
 
     if st.button("生成 AI 分析", type="primary", use_container_width=False):
-        api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
-        if not api_key:
-            st.error("请先在侧边栏填写 API Key，或在 .env 中配置 DEEPSEEK_API_KEY。")
-        else:
-            with st.spinner("DeepSeek 正在撰写分析摘要，请稍候…"):
-                result = generate_analysis(metrics, company, period)
-            st.session_state.analysis = result
+        # ===== 核心改动：强制检查用户是否输入了自己的 Key =====
+        user_key = st.session_state.get("user_api_key", "").strip()
+        if not user_key:
+            st.error("⚠️ 请先在侧边栏输入您的 DeepSeek API Key！")
+            st.stop()
+
+        # 检查是否已有指标数据
+        if not metrics or all(v is None for v in metrics.values()):
+            st.warning("⚠️ 未提取到任何财务指标，请先上传有效财报 PDF。")
+            st.stop()
+
+        with st.spinner("DeepSeek 正在撰写分析摘要，请稍候…"):
+            # ===== 关键改动：把用户自己的 Key 传给生成函数 =====
+            result = generate_analysis(metrics, company, period, api_key=user_key)
+        st.session_state.analysis = result
 
     if st.session_state.analysis:
         st.markdown(st.session_state.analysis)

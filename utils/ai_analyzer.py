@@ -28,20 +28,26 @@ SYSTEM_PROMPT = """你是一名资深证券分析师，擅长解读 A 股上市�
 6. 输出使用简体中文 Markdown，按指定小节标题组织，不要添加未要求的章节。"""
 
 
-def _get_client() -> OpenAI:
-    """从环境变量创建 DeepSeek 客户端。"""
-    api_key = os.getenv("DEEPSEEK_API_KEY")
-    if not api_key or not api_key.strip():
+def _get_client(api_key: Optional[str] = None) -> OpenAI:
+    """从环境变量或传入参数创建 DeepSeek 客户端。
+    
+    参数:
+        api_key: 用户传入的 API Key，优先使用
+    """
+    # 优先使用传入的 Key
+    key = api_key or os.getenv("DEEPSEEK_API_KEY")
+    
+    if not key or not key.strip():
         raise ValueError(
-            "未配置 DEEPSEEK_API_KEY。请在 .env 中设置后再调用 AI 分析。"
+            "未检测到 API Key。请在侧边栏输入您的 DeepSeek API Key，"
+            "或在 .env 中配置 DEEPSEEK_API_KEY。"
         )
 
     base_url = os.getenv("DEEPSEEK_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
-    # 兼容用户只写 https://api.deepseek.com 的情况
     if not base_url.endswith("/v1"):
         base_url = f"{base_url}/v1"
 
-    return OpenAI(api_key=api_key.strip(), base_url=base_url)
+    return OpenAI(api_key=key.strip(), base_url=base_url)
 
 
 def _format_metric_value(name: str, value: Any) -> str:
@@ -116,6 +122,7 @@ def generate_analysis(
     company_name: str,
     report_period: str,
     *,
+    api_key: Optional[str] = None,  # ← 新增参数
     temperature: float = 0.3,
     max_tokens: int = 2048,
 ) -> str:
@@ -126,22 +133,20 @@ def generate_analysis(
         metrics: pdf_parser.parse_financial_report 返回的指标字典
         company_name: 公司名称（如「贵州茅台」）
         report_period: 报告期（如「2024年年度报告」「2025年半年度报告」）
+        api_key: 用户传入的 DeepSeek API Key，优先使用
         temperature: 采样温度，越低越稳定
         max_tokens: 最大生成 token 数
 
     返回:
         AI 生成的分析文本（Markdown）
-
-    异常:
-        ValueError: API Key 未配置等参数问题
-        其他 API 相关错误会被捕获并转为可读错误字符串返回
     """
     company_name = (company_name or "").strip() or "未知公司"
     report_period = (report_period or "").strip() or "未知报告期"
     metrics = metrics or {}
 
     try:
-        client = _get_client()
+        # 把用户的 Key 传给 _get_client
+        client = _get_client(api_key=api_key)
     except ValueError as e:
         return str(e)
 
@@ -159,7 +164,7 @@ def generate_analysis(
             max_tokens=max_tokens,
         )
     except AuthenticationError:
-        return "DeepSeek API 鉴权失败：请检查 DEEPSEEK_API_KEY 是否正确、是否仍有效。"
+        return "DeepSeek API 鉴权失败：请检查您的 API Key 是否正确、是否仍有效。"
     except RateLimitError:
         return "DeepSeek API 触发限流，请稍后重试。"
     except APIConnectionError:
