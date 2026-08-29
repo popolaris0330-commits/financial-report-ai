@@ -249,6 +249,41 @@ def _find_metric_value(
                 if re.search(r"扣\s*非|扣\s*除\s*非\s*经\s*常", ctx):
                     continue
 
+                # ===== 新增：如果当前行找不到数字，尝试跨行查找 =====
+                # 当前匹配位置所在的文本片段（从匹配位置开始往后 150 个字符）
+                segment = text[m.start():m.start() + 200]
+                
+                # 先把换行符替换为空格，方便跨行匹配
+                segment_flat = segment.replace('\n', ' ')
+                
+                # 查找数字（带千分位逗号、可含负号）
+                num_match = re.search(_NUM_RE, segment_flat)
+                
+                if num_match:
+                    raw_num = num_match.group()
+                    value = _parse_number_token(raw_num)
+                    
+                    # 尝试从片段中提取单位（可能出现在数字后面或前面）
+                    # 先找数字后面的单位
+                    after_num = segment_flat[num_match.end():num_match.end()+20]
+                    unit_match = re.search(r'(亿元|万元|亿|万|千元|元)', after_num)
+                    if not unit_match:
+                        # 如果数字后面没有，找数字前面的单位（在指标名和数字之间）
+                        before_num = segment_flat[:num_match.start()]
+                        unit_match = re.search(r'(亿元|万元|亿|万|千元|元)', before_num)
+                    
+                    if unit_match:
+                        mul = _unit_multiplier(unit_match.group(1), default_unit_mul)
+                        value = value * mul
+                    else:
+                        # 没找到单位，用默认单位
+                        value = value * default_unit_mul
+                    
+                    # 如果找到了有效数字，直接返回
+                    if value is not None:
+                        return value
+                # ===== 跨行查找结束 =====
+
             # 「净资产」勿匹配「净资产收益率」
             if alias in ("净资产", "股东权益合计", "所有者权益合计"):
                 after = text[m.end() : m.end() + 12]
