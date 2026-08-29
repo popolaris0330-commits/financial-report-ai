@@ -1,10 +1,9 @@
 # 财报 AI 解读器 - 依赖包
 # 安装：pip install -r requirements.txt
 
-streamlit>=1.28.0,<1.40.0
-pdfplumber>=0.10.0
-plotly>=5.18.0
-openai>=1.0.0
-python-dotenv>=1.0.0
-pandas>=1.5.0,<2.1.0
-numpy>=1.21.0,<1.25.0
+streamlit==1.39.1
+pdfplumber==0.11.10
+plotly==5.24.0
+openai==1.65.1
+python-dotenv==1.0.1
+pandas>=2.2.0
