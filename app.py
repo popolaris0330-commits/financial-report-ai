@@ -139,7 +139,7 @@ def _configure_api_key() -> None:
     user_key = st.sidebar.text_input(
         "DeepSeek API Key",
         type="password",
-        placeholder="请输入您的 DeepSeek API Key（必填）",
+        placeholder="如：sk-...",
         help="在 platform.deepseek.com 注册并获取 API Key。不会保存在任何地方。",
         key="api_key_input",
     )
